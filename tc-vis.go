@@ -39,6 +39,10 @@ func handleQdisc(qdiscs []netlink.Qdisc, link netlink.Link, qdisc netlink.Qdisc,
 }
 
 func handleLink(link netlink.Link, extra_nesting bool) {
+	var offset = 0
+	if extra_nesting {
+		offset = 1
+	}
 	qdiscs, _ := netlink.QdiscList(link)
 	for idx, qdisc := range qdiscs {
 		switch qdisc.Attrs().Parent {
@@ -47,13 +51,13 @@ func handleLink(link netlink.Link, extra_nesting bool) {
 				fmt.Printf("    ")
 			}
 			fmt.Printf("Qdisc %s %x: root\n", qdisc.Type(), qdisc.Attrs().Handle>>16)
-			handleQdisc(qdiscs, link, qdisc, idx+1)
+			handleQdisc(qdiscs, link, qdisc, idx+offset)
 		case netlink.HANDLE_INGRESS:
 			if extra_nesting {
 				fmt.Printf("    ")
 			}
 			fmt.Printf("Qdisc %s %x:\n", qdisc.Type(), qdisc.Attrs().Handle>>16)
-			handleQdisc(qdiscs, link, qdisc, idx+1)
+			handleQdisc(qdiscs, link, qdisc, idx+offset)
 		}
 	}
 }
