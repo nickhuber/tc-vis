@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alecthomas/kong"
 	"github.com/vishvananda/netlink"
 )
 
-func handleQdisc(qdiscs []netlink.Qdisc, link netlink.Link, qdisc netlink.Qdisc, depth int) {
+func HandleQdisc(qdiscs []netlink.Qdisc, link netlink.Link, qdisc netlink.Qdisc, depth int) {
 	classes, _ := netlink.ClassList(link, qdisc.Attrs().Handle)
 	for _, class := range classes {
 		if class.Attrs().Parent == netlink.HANDLE_ROOT && qdisc.Attrs().Parent != netlink.HANDLE_ROOT {
@@ -32,13 +33,13 @@ func handleQdisc(qdiscs []netlink.Qdisc, link netlink.Link, qdisc netlink.Qdisc,
 					cur_qdisc.Type(),
 					cur_qdisc.Attrs().Handle>>16,
 				)
-				handleQdisc(qdiscs, link, cur_qdisc, depth+2)
+				HandleQdisc(qdiscs, link, cur_qdisc, depth+2)
 			}
 		}
 	}
 }
 
-func handleLink(link netlink.Link, extra_nesting bool) {
+func HandleLink(link netlink.Link, extra_nesting bool) {
 	var offset = 0
 	if extra_nesting {
 		offset = 1
@@ -51,30 +52,38 @@ func handleLink(link netlink.Link, extra_nesting bool) {
 				fmt.Printf("    ")
 			}
 			fmt.Printf("Qdisc %s %x: root\n", qdisc.Type(), qdisc.Attrs().Handle>>16)
-			handleQdisc(qdiscs, link, qdisc, idx+offset)
+			HandleQdisc(qdiscs, link, qdisc, idx+offset)
 		case netlink.HANDLE_INGRESS:
 			if extra_nesting {
 				fmt.Printf("    ")
 			}
 			fmt.Printf("Qdisc %s %x:\n", qdisc.Type(), qdisc.Attrs().Handle>>16)
-			handleQdisc(qdiscs, link, qdisc, idx+offset)
+			HandleQdisc(qdiscs, link, qdisc, idx+offset)
 		}
 	}
 }
 
+var cli struct {
+	Interface string `arg name:"interface" help:"Interface to query." type:"string" default:"" optional`
+}
+
 func main() {
-	if len(os.Args) > 3 {
-		fmt.Printf("usage: %s [interface]\n", os.Args[0])
-		os.Exit(1)
-	}
-	if len(os.Args) == 2 {
-		link, _ := netlink.LinkByName(os.Args[1])
-		handleLink(link, false)
+	kong.Parse(&cli,
+		kong.Name("tc-vis"),
+		kong.Description("A hierarchical viewer for tc qdiscs and classes."))
+
+	if cli.Interface != "" {
+		link, err := netlink.LinkByName(cli.Interface)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unknown interface %s\n", cli.Interface)
+			os.Exit(1)
+		}
+		HandleLink(link, false)
 	} else {
 		links, _ := netlink.LinkList()
 		for _, link := range links {
 			fmt.Printf("%s\n", link.Attrs().Name)
-			handleLink(link, true)
+			HandleLink(link, true)
 		}
 	}
 }

@@ -2,13 +2,8 @@ I end up using TC a lot to manage many rules that have a few levels of parents
 and it can be hard to keep track of how everything relates so this tool just
 formats the Qdiscs and classes into an hierarchical format.
 
-The only requirement is github.com/vishvananda/netlink for fetching the data from netlink, so installation is just
-
-    go get github.com/vishvananda/netlink
-    go build
-    ./ts-vis eth0
-
-Or if you want you can just use `make install` to put it in /usr/local/bin
+You can just use `make install` to put it in /usr/local/bin, or `go build` if
+you don't want to use my makefile and handle it yourself.
 
 Turns this
 
